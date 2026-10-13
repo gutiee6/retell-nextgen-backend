@@ -25,6 +25,11 @@ uvicorn app:app --host 127.0.0.1 --port 8000
 6. Add approved office hours, after-hours coverage and escalation policies in the agent knowledge base. Do not publish unverified hours or imply 24/7 live physician availability.
 7. Do not connect NextGen EHR without written practice authorization, vendor approval, scoped OAuth, audit logging and HIPAA review. **No NextGen integration is implemented here.**
 
+## GitHub automation
+- GitHub Actions runs offline tests on pushes to `main`, pull requests, and manual runs.
+- Tests use synthetic payloads and mock Retell verification; they do not call Twilio or Retell and do not contain patient data.
+- Run locally with `python -m unittest discover -s tests -v`.
+
 ## Safety requirements
 - Never send names, dates of birth, phone numbers, patient-specific requests, transcripts or recordings to GitHub Issues or Actions.
 - Do not promise callbacks, clinical advice, prescriptions or confirmed appointments when no approved workflow exists.
