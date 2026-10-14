@@ -1,12 +1,13 @@
 # Nevada Brain & Spine Care — Retell AI backend (starter)
 
-**Status: code scaffold only; not deployed, not connected to Retell or NextGen; not approved for patient calls.**
+**Status: code scaffold only; no verified live NextGen connection or SMS sending. Retell deployment and compliance status must be checked separately.**
 
 ## Implemented
 - `GET /health` status endpoint.
 - `POST /retell/webhook` rejects unsigned requests and uses the official Retell SDK verifier. Valid webhook events return 204; no transcript, phone number, recording, call payload, or patient data is logged, saved or sent elsewhere.
 - `POST /retell/functions/office-routing` requires a separate Bearer token; returns static, generic routing metadata only.
-- No scheduling, text replies, NextGen writes, recording, or clinical triage.
+- No scheduling, text sending, NextGen writes, recording, or clinical triage.
+- `GET /nextgen/sms/status` and token-protected `POST /nextgen/sms/preview` to generate **synthetic, offline, never-sent** appointment-message previews with consent checks. See [NEXTGEN_SMS_SETUP.md](NEXTGEN_SMS_SETUP.md).
 
 ## Running locally with **synthetic test calls only**
 ```bash
