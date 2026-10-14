@@ -65,14 +65,14 @@ class PublicOfficeMCPTests(unittest.TestCase):
 
     def test_root_health_for_render_probes(self):
         with patch.dict(os.environ, {"MCP_BEARER_TOKEN": ""}):
-            with TestClient(app) as client:
-                response = client.get("/")
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.json()["status"], "ok")
-                self.assertEqual(client.head("/").status_code, 200)
-                self.assertEqual(client.head("/health").status_code, 200)
-                # The public health check must never expose MCP tool discovery.
-                self.assertEqual(client.post("/mcp", json={}).status_code, 401)
+            client = TestClient(app)
+            response = client.get("/")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "ok")
+            self.assertEqual(client.head("/").status_code, 200)
+            self.assertEqual(client.head("/health").status_code, 200)
+            # The public health check must never expose MCP tool discovery.
+            self.assertEqual(client.post("/mcp", json={}).status_code, 401)
 
     def test_authorized_mcp_initialize_and_tool_discovery(self):
         """Exercise the actual MCP transport, not just Python helper functions."""
@@ -116,10 +116,10 @@ class PublicOfficeMCPTests(unittest.TestCase):
 
     def test_health_check_without_token(self):
         with patch.dict(os.environ, {"MCP_BEARER_TOKEN": ""}):
-            with TestClient(app) as client:
-                response = client.get("/health")
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.json()["mode"], "read_only_public_information")
+            client = TestClient(app)
+            response = client.get("/health")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["mode"], "read_only_public_information")
 
 
 if __name__ == "__main__":
