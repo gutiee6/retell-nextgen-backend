@@ -5,7 +5,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app import app
-from nextgen_sms import SmsPreviewRequest, preview_sms
+from nextgen_sms import AppointmentAction, SmsPreviewRequest, preview_sms
 
 client = TestClient(app)
 
@@ -46,7 +46,7 @@ class SmsPreviewTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
 
     def test_opt_out_fails(self):
-        payload = SmsPreviewRequest(action="cancelled", consent_verified=True, opted_out=True)
+        payload = SmsPreviewRequest(action=AppointmentAction.cancelled, consent_verified=True, opted_out=True)
         with self.assertRaises(ValueError):
             preview_sms(payload)
 
@@ -71,12 +71,12 @@ class SmsPreviewTests(unittest.TestCase):
     def test_naive_datetime_rejected(self):
         with self.assertRaises(ValueError):
             SmsPreviewRequest(
-                action="scheduled", start_at="2026-11-03T10:30:00", consent_verified=True,
+                action=AppointmentAction.scheduled, start_at="2026-11-03T10:30:00", consent_verified=True,
             )
 
     def test_missing_date_rejected(self):
         with self.assertRaises(ValueError):
-            preview_sms(SmsPreviewRequest(action="reminder", consent_verified=True))
+            preview_sms(SmsPreviewRequest(action=AppointmentAction.reminder, consent_verified=True))
 
     def test_status_public_non_sensitive(self):
         response = client.get("/nextgen/sms/status")
