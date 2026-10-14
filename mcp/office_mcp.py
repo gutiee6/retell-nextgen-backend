@@ -189,7 +189,11 @@ mcp_http_app = mcp.streamable_http_app(
     host="0.0.0.0",
 )
 inner_app = Starlette(
-    routes=[Route("/health", health), Mount("/", app=mcp_http_app)],
+    routes=[
+        Route("/health", health, methods=["GET", "HEAD"]),
+        Route("/", health, methods=["GET", "HEAD"]),
+        Mount("/", app=mcp_http_app),
+    ],
     lifespan=lifespan,
 )
 
@@ -206,7 +210,7 @@ class BearerTokenGate:
         self.asgi_app = asgi_app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope.get("path") != "/health":
+        if scope["type"] == "http" and scope.get("path") not in {"/health", "/"}:
             headers = dict(scope.get("headers", []))
             provided = headers.get(b"authorization", b"").decode("latin-1")
             if not has_valid_mcp_token(provided):
