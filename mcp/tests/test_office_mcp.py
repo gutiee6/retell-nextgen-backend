@@ -50,8 +50,8 @@ class PublicOfficeMCPTests(unittest.TestCase):
         with patch.dict(os.environ, {"MCP_BEARER_TOKEN": ""}):
             self.assertFalse(has_valid_mcp_token(""))
             self.assertFalse(has_valid_mcp_token("Bearer not-a-token"))
-            with TestClient(app) as client:
-                self.assertEqual(client.post("/mcp", json={}).status_code, 401)
+            client = TestClient(app)
+            self.assertEqual(client.post("/mcp", json={}).status_code, 401)
 
     def test_short_token_is_rejected(self):
         with patch.dict(os.environ, {"MCP_BEARER_TOKEN": "short"}):
