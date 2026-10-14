@@ -63,12 +63,63 @@ class PublicOfficeMCPTests(unittest.TestCase):
             self.assertTrue(has_valid_mcp_token("Bearer " + secret))
             self.assertFalse(has_valid_mcp_token("Bearer " + secret[:-1]))
 
+    def test_root_health_for_render_probes(self):
+        with patch.dict(os.environ, {"MCP_BEARER_TOKEN": ""}):
+            client = TestClient(app)
+            response = client.get("/")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "ok")
+            self.assertEqual(client.head("/").status_code, 200)
+            self.assertEqual(client.head("/health").status_code, 200)
+            # The public health check must never expose MCP tool discovery.
+            self.assertEqual(client.post("/mcp", json={}).status_code, 401)
+
+    def test_authorized_mcp_initialize_and_tool_discovery(self):
+        """Exercise the actual MCP transport, not just Python helper functions."""
+        secret = "synthetic-mcp-test-key-" + "z" * 40
+        headers = {
+            "Authorization": "Bearer " + secret,
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+        }
+        with patch.dict(os.environ, {"MCP_BEARER_TOKEN": secret}):
+            with TestClient(app) as client:
+                initialized = client.post("/mcp", headers=headers, json={
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {},
+                        "clientInfo": {"name": "synthetic-mcp-test", "version": "1"},
+                    },
+                })
+                self.assertEqual(initialized.status_code, 200, initialized.text)
+                self.assertIn("result", initialized.json(), initialized.text)
+                version = initialized.json()["result"]["protocolVersion"]
+                listing = client.post("/mcp", headers={
+                    **headers, "Mcp-Protocol-Version": version,
+                }, json={
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/list",
+                    "params": {},
+                })
+                self.assertEqual(listing.status_code, 200, listing.text)
+                names = {tool["name"] for tool in listing.json()["result"]["tools"]}
+                self.assertEqual(names, {
+                    "get_office_information",
+                    "get_appointment_guidance",
+                    "get_department_routing",
+                    "get_integration_status",
+                })
+
     def test_health_check_without_token(self):
         with patch.dict(os.environ, {"MCP_BEARER_TOKEN": ""}):
-            with TestClient(app) as client:
-                response = client.get("/health")
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.json()["mode"], "read_only_public_information")
+            client = TestClient(app)
+            response = client.get("/health")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["mode"], "read_only_public_information")
 
 
 if __name__ == "__main__":
