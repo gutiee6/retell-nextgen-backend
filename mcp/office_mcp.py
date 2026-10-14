@@ -86,6 +86,7 @@ DEPARTMENTS = {
     "medical_records_referrals": "Medical records and referrals staff",
     "tms": "TMS program staff",
     "appointments": "Appointment staff",
+    "urgent_postop": "Urgent postoperative call transfer (practice-approved physician destination)",
     "office_staff": "General office staff",
 }
 
@@ -97,6 +98,7 @@ def department_guidance(
         "medical_records_referrals",
         "tms",
         "appointments",
+        "urgent_postop",
         "office_staff",
     ],
     language: Literal["en", "es"] = "en",
@@ -105,6 +107,12 @@ def department_guidance(
     return {
         "department": department,
         "description": DEPARTMENTS[department],
+        "emergency_message": (
+            "For a life-threatening emergency, hang up and dial 911 immediately."
+            if department == "urgent_postop" and language == "en" else
+            "Si es una emergencia que pone en peligro la vida, cuelgue y llame al 911 inmediatamente."
+            if department == "urgent_postop" else None
+        ),
         "language": language,
         "transfer_performed": False,
         "staff_contacted": False,
@@ -155,11 +163,12 @@ def get_department_routing(
         "medical_records_referrals",
         "tms",
         "appointments",
+        "urgent_postop",
         "office_staff",
     ],
     language: Literal["en", "es"] = "en",
 ) -> dict:
-    """Return a routing category; transfers still require approved Retell nodes."""
+    """Return a routing category; urgent post-op callers still need a Retell transfer."""
     return department_guidance(department, language)
 
 
