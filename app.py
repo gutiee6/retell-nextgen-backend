@@ -4,6 +4,8 @@ import secrets
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 from retell import Retell
+from pydantic import ValidationError
+from nextgen_sms import SmsPreviewRequest, preview_sms
 
 app = FastAPI(title="Retell office assistant backend", docs_url=None, redoc_url=None)
 
@@ -54,3 +56,36 @@ async def office_routing(request: Request):
         ],
         "clinical_policy": "Do not triage, diagnose, prescribe, or promise a callback or appointment. For immediate medical emergencies, instruct caller to call 911."
     }
+
+
+@app.get("/nextgen/sms/status")
+def nextgen_sms_status():
+    """Public capabilities only. Does not inspect PHI or expose configuration secrets."""
+    return {
+        "nextgen_connected": False,
+        "sending_enabled": False,
+        "mode": "preview_only",
+        "message": "An approved NextGen Office schedule feed and HIPAA-eligible SMS infrastructure are required.",
+    }
+
+
+@app.post("/nextgen/sms/preview")
+async def nextgen_sms_preview(request: Request):
+    """Strictly synthetic appointment SMS preview. NEVER sends, logs or stores messages."""
+    token = os.getenv("NEXTGEN_SMS_PREVIEW_TOKEN", "")
+    auth = request.headers.get("authorization", "")
+    if not token or not secrets.compare_digest(auth or "", f"Bearer {token}"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    raw = await request.body()
+    if len(raw) > 2_048:
+        raise HTTPException(status_code=413, detail="Payload too large")
+    try:
+        params = SmsPreviewRequest.model_validate_json(raw)
+    except ValidationError:
+        # Avoid reflecting input/PHI in error details.
+        raise HTTPException(status_code=422, detail="Invalid synthetic preview input") from None
+    try:
+        message = preview_sms(params)
+    except ValueError:
+        raise HTTPException(status_code=409, detail="Not eligible for a message preview") from None
+    return {"mode": "preview_only", "sent": False, "message": message}
