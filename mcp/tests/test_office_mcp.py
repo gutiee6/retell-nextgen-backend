@@ -40,6 +40,16 @@ class PublicOfficeMCPTests(unittest.TestCase):
         self.assertFalse(guidance["transfer_performed"])
         self.assertFalse(guidance["staff_contacted"])
 
+    def test_urgent_postop_is_routing_only_with_emergency_language(self):
+        route = department_guidance("urgent_postop", language="en")
+        self.assertEqual(route["department"], "urgent_postop")
+        self.assertIn("dial 911", route["emergency_message"])
+        self.assertFalse(route["transfer_performed"])
+        self.assertFalse(route["staff_contacted"])
+        self.assertNotIn("phone_number", route)
+        route_es = department_guidance("urgent_postop", language="es")
+        self.assertIn("911", route_es["emergency_message"])
+
     def test_no_ehr_patient_or_call_access(self):
         status = integration_capabilities()
         self.assertFalse(status["nextgen_api_connected"])
