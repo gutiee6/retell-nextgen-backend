@@ -73,6 +73,11 @@ class PublicOfficeMCPTests(unittest.TestCase):
             self.assertTrue(has_valid_mcp_token("Bearer " + secret))
             self.assertFalse(has_valid_mcp_token("Bearer " + secret[:-1]))
 
+    def test_non_latin1_auth_header_fails_closed(self):
+        secret = "synthetic-testing-secret-" + "x" * 40
+        with patch.dict(os.environ, {"MCP_BEARER_TOKEN": secret}):
+            self.assertFalse(has_valid_mcp_token("Bearer " + "💩" * 40))
+
     def test_root_health_for_render_probes(self):
         with patch.dict(os.environ, {"MCP_BEARER_TOKEN": ""}):
             client = TestClient(app)
