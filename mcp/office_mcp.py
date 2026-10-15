@@ -208,9 +208,16 @@ inner_app = Starlette(
 
 
 def has_valid_mcp_token(auth_header: str) -> bool:
-    """Fail closed without a unique, sufficiently long secret."""
+    """Fail closed without a unique, sufficiently long ASCII secret."""
     token = os.getenv("MCP_BEARER_TOKEN", "")
-    return len(token) >= 32 and secrets.compare_digest(auth_header, "Bearer " + token)
+    if len(token) < 32:
+        return False
+    try:
+        expected = ("Bearer " + token).encode("ascii")
+        provided = auth_header.encode("latin-1")
+    except UnicodeEncodeError:
+        return False
+    return secrets.compare_digest(provided, expected)
 
 
 class BearerTokenGate:
