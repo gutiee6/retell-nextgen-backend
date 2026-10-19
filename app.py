@@ -17,7 +17,8 @@ MAX_WEBHOOK_BYTES = 100_000
 MAX_FUNCTION_BYTES = 4_096
 
 
-@app.get("/health")
+@app.api_route("/", methods=["GET", "HEAD"])
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok", "mode": "configuration_only"}
 
