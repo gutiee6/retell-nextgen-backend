@@ -27,6 +27,14 @@ class RetellBackendTests(unittest.TestCase):
         self.assertEqual(self.client.get("/health").json(),
                          {"status": "ok", "mode": "configuration_only"})
 
+    def test_root_and_head_health_probes(self):
+        for method in ("GET", "HEAD"):
+            for path in ("/", "/health"):
+                response = self.client.request(method, path)
+                self.assertEqual(response.status_code, 200, (method, path))
+                if method == "GET":
+                    self.assertEqual(response.json()["status"], "ok")
+
     def test_webhook_rejects_no_credentials(self):
         with patch.dict("os.environ", {"RETELL_API_KEY": ""}):
             self.assertEqual(self.client.post("/retell/webhook", content=b"{}").status_code, 401)
