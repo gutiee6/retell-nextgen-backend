@@ -1,0 +1,121 @@
+"""Public office routing policy. No patient identifiers or clinical information."""
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
+PRACTICE = "Nevada Brain & Spine Care"
+TIMEZONE = "America/Los_Angeles"
+BOOKING_URL = (
+    "https://www.yourhealthfile.com/providers/1289988/"
+    "las-vegas-neurological-surgery-doctor.html"
+)
+PHONE_HOURS = "Monday-Friday, 7:00 AM-11:00 AM Pacific"
+FRIDAY_CLINIC_HOURS = "Friday, 7:00 AM-12:00 PM Pacific (in person, not phone coverage)"
+# Hours are based on the supplied Oct 19 evaluation. Confirm before using in production.
+HOURS_APPROVAL_REQUIRED = True
+
+REQUEST_TYPES = {
+    "medical_records", "fax", "referral", "forms", "billing",
+    "refill", "dose_change", "other",
+}
+APPOINTMENT_TYPES = {"new", "availability", "reschedule", "cancel"}
+
+
+def phone_status(when: datetime | None = None) -> dict:
+    """Determine staffed phone coverage; 11:00 AM is CLOSED, not open."""
+    if when is None:
+        local = datetime.now(ZoneInfo(TIMEZONE))
+    else:
+        if when.tzinfo is None or when.utcoffset() is None:
+            raise ValueError("Expected a timezone-aware datetime")
+        local = when.astimezone(ZoneInfo(TIMEZONE))
+
+    weekday = local.weekday()
+    clock = local.time().replace(tzinfo=None)
+    staffed = weekday < 5 and time(7, 0) <= clock < time(11, 0)
+    friday_clinic = weekday == 4 and time(7, 0) <= clock < time(12, 0)
+    return {
+        "timezone": TIMEZONE,
+        "local_time": local.isoformat(timespec="seconds"),
+        "phone_hours": PHONE_HOURS,
+        "friday_in_person_clinic_hours": FRIDAY_CLINIC_HOURS,
+        "live_phone_staff_available": staffed,
+        "friday_in_person_clinic_active": friday_clinic,
+        "phone_closing_boundary": "11:00 AM Pacific is outside live phone hours",
+        "after_hours_message": (
+            "Live phone staff are unavailable right now. "
+            "I can explain the approved way to leave a message."
+            if not staffed else None
+        ),
+        "hours_require_practice_approval": HOURS_APPROVAL_REQUIRED,
+    }
+
+
+def appointment_guidance(request_type: str = "new", language: str = "en") -> dict:
+    """Portal fallback works even when an external appointment lookup fails."""
+    if request_type not in APPOINTMENT_TYPES:
+        raise ValueError("Unknown appointment request type")
+    if language not in {"en", "es"}:
+        raise ValueError("Unsupported language")
+    instructions = {
+        "en": {
+            "new": "For new appointments, use the YourHealthFile patient portal.",
+            "availability": (
+                "For available appointments, check YourHealthFile directly. "
+                "I cannot check live availability. Office staff can review a message "
+                "through an approved intake channel."
+            ),
+            "reschedule": "Ask office staff to review your rescheduling request.",
+            "cancel": "Ask office staff to review your cancellation request.",
+        },
+        "es": {
+            "new": "Para citas nuevas, utilice el portal de pacientes YourHealthFile.",
+            "availability": (
+                "Consulte los horarios directamente en YourHealthFile. "
+                "No puedo verificar la disponibilidad en tiempo real."
+            ),
+            "reschedule": "Solicite al personal que revise su cambio de cita.",
+            "cancel": "Solicite al personal que revise su cancelación.",
+        },
+    }
+    return {
+        "success": True,
+        "request_type": request_type,
+        "language": language,
+        "portal_name": "YourHealthFile",
+        "new_patient_booking_url": BOOKING_URL,
+        "instructions": instructions[language][request_type],
+        "live_availability_checked": False,
+        "appointment_booked": False,
+        "appointment_changed": False,
+        "appointment_cancelled": False,
+        "message_submitted": False,
+    }
+
+
+def administrative_guidance(request_type: str, language: str = "en") -> dict:
+    """Return an intake policy, not an assertion of submitted patient data."""
+    if request_type not in REQUEST_TYPES:
+        raise ValueError("Unknown administrative request type")
+    if language not in {"en", "es"}:
+        raise ValueError("Unsupported language")
+    text = (
+        "Permita hasta tres días hábiles para procesar solicitudes administrativas "
+        "rutinarias. Algunos documentos requieren verificación o autorización. "
+        "Las solicitudes urgentes deben escalarse al personal."
+        if language == "es" else
+        "Please allow up to three business days for routine administrative "
+        "processing. Medical records or faxes may require verification or "
+        "authorization. Escalate urgent requests to staff."
+    )
+    return {
+        "success": True,
+        "request_type": request_type,
+        "language": language,
+        "routine_processing_target_business_days": 3,
+        "processing_notice": text,
+        "secure_intake_enabled": False,
+        "message_submitted": False,
+        "records_released": False,
+        "fax_sent": False,
+        "requires_authorized_staff_review": True,
+    }
