@@ -107,6 +107,17 @@ class RetellBackendTests(unittest.TestCase):
             self.assertFalse(result["appointment_changed"])
             self.assertFalse(result["appointment_cancelled"])
 
+    def test_retell_wrapped_args_work_without_phi(self):
+        result = self.post("/retell/functions/appointment-info",
+                           {"name": "appointment_info", "args": {"request_type": "new"}})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()["portal_name"], "YourHealthFile")
+
+    def test_retell_wrapped_args_reject_patient_fields(self):
+        result = self.post("/retell/functions/appointment-info",
+                           {"args": {"request_type": "new", "patient_name": "SYNTHETIC"}})
+        self.assertEqual(result.status_code, 422)
+
     def test_public_tools_reject_patient_details(self):
         for path in (
             "/retell/functions/office-routing",
