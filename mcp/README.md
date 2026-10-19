@@ -1,17 +1,19 @@
 # Nevada Brain & Spine Care — read-only MCP for Retell AI
 
-**Status: proposed implementation, not deployed, not clinically approved, and not connected to NextGen.** This is a separate service from the existing Retell webhook backend.
+**Status: deployed on Render as a read-only public-information MCP service; not automatically connected to the live Retell agent, not connected to NextGen, and not approved to process patient information.** This is a separate service from the Retell webhook backend.
 
 ## What it does
 
-Four MCP tools expose only public, non-patient-specific information:
+Six MCP tools expose only public, non-patient-specific information:
 
 | Tool | Purpose |
 | --- | --- |
 | `get_office_information` | Practice name, YourHealthFile link, English/Spanish instructions |
 | `get_appointment_guidance` | Instructions for new, availability, change, and cancel requests; **no actual scheduling** |
 | `get_department_routing` | Names office, surgery, records, TMS, or appointments category; **does not transfer callers** |
-| `get_integration_status` | Truthfully reports lack of EHR, live calendar, call analytics, SMS, or patient data access |
+| `get_integration_status` | Truthfully reports lack of EHR, live calendar, call analytics, SMS, and patient data access |
+| `get_phone_hours_status` | Calculates Pacific time against the **proposed** M–F 7–11 AM staff window, separates Friday clinic hours; does not verify actual staff presence |
+| `get_administrative_request_guidance` | Medical records, faxes, forms, refills, referral requests: **3 business days** routinely; **outgoing referrals: 2 business days**; no submission or release |
 
 The approved new-patient link is:
 
@@ -39,11 +41,13 @@ An MCP client must supply that header to initialize, discover, and call tools.
 
 ## Deployment
 
-1. Review and merge this PR only after confirming the feature is desired. Existing `app.py` and Retell endpoints are unchanged.
-2. Create a **separate** approved web service (e.g. via Render if the practice's contracts permit) pointing to this repository. Use repository root as build context and `mcp/Dockerfile` as Dockerfile path, port `8080`.
+The existing Render service is **`retell-nextgen-backend`**, hosted at `https://retell-nextgen-backend.onrender.com`, with Dockerfile `mcp/Dockerfile`. GitHub changes to `main` auto-deploy there. These changes only extend read-only tool responses; no patient data is accepted.
+
+1. Review and merge this PR after tests pass. Existing `app.py` REST guidance and separate phone webhook services are unchanged.
+2. Keep the existing Render service's `mcp/Dockerfile` and its configured port. No additional service is necessary.
 3. In the host secret manager set `MCP_BEARER_TOKEN` to a unique random 32+ character value. Never place it in a Git commit, Retell prompt, URL query string, or chat.
 4. After obtaining a stable HTTPS hostname, connect Retell AI agent → **Add MCP** → URL `https://YOUR-MCP-HOST/mcp` → HTTP header `Authorization: Bearer YOUR_MCP_BEARER_TOKEN`.
-5. Select the four available tools and instruct the agent to call the relevant tool. Test English, Spanish, new appointment, cancellation, failure, and 401 handling using **synthetic callers only**.
+5. Select the six available tools and instruct the agent to call the relevant tool. Test English, Spanish, new appointment, cancellation, failure, and 401 handling using **synthetic callers only**.
 6. Ensure YourHealthFile scheduling and SMS delivery are configured *separately*. Neither exists here.
 
 ## Safety controls and remaining work
@@ -51,7 +55,16 @@ An MCP client must supply that header to initialize, discover, and call tools.
 - Only read-only public office information; no PHI is needed or retained. The server does not process webhook payloads, transcripts, clinical requests, or patient identifiers.
 - All MCP requests require the separate bearer token; the health endpoint is public. Traffic must use HTTPS in deployment.
 - It does not access NextGen OAuth, send texts, operate phones, schedule/cancel appointments, or access call logs.
-- Current office phone hours are deliberately unspecified until confirmed by the practice.
+- The policy currently contains **proposed** staffed phone hours, Monday–Friday 7:00 AM until before 11:00 AM Pacific. Exactly 11 AM is outside the window. The physical Friday clinic 7 AM–noon does not extend telephone coverage. Practice approval is still required, and the MCP server cannot independently confirm a staff member is on duty.
+- The office address and shared Dr. Forte location are read from the repository's existing public office policy and require staff verification before public announcement.
 - For emergencies, use the practice-approved emergency language and instruct callers to dial 911; never offer medical triage via MCP.
 - Before any patient-specific integration, complete practice authorization, signed vendor BAAs, HIPAA risk assessment, least-privilege access controls, audit logging, encryption, retention rules, and an explicit approved workflow. **Do not assume Retell, Render, GitHub or this server is HIPAA compliant by default.**
 - The existing repository is **public**. Never commit API credentials, PHI, transcripts, access tokens, real phone numbers, or appointment details.
+
+## Tool setup and failure handling
+
+- In the Retell agent, use `get_appointment_guidance` for scheduling questions and explicitly say **YourHealthFile** even if the tool fails. This tool cannot book or check live availability.
+- Use `get_phone_hours_status` for Pacific-time coverage windows, but **never claim real staff are on duty** from its schedule alone. Confirm official hours with office leadership.
+- Use `get_administrative_request_guidance` for routine records, fax, referral, forms, refill, and dose-change policies. **It does not collect or submit patient requests.** No names, DOBs, medications or medical details belong in tool arguments.
+- Urgent postoperative calls still need the real Retell `transfer_urgent_postop` action. `get_department_routing` is *not* a transfer.
+- Never claim a message, record release, fax or prescription was processed without an independently verified response from an approved secure workflow.

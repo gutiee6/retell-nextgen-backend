@@ -12,6 +12,8 @@ from office_mcp import (
     has_valid_mcp_token,
     integration_capabilities,
     office_information,
+    staffed_phone_window_guidance,
+    request_processing_guidance,
 )
 
 
@@ -49,6 +51,50 @@ class PublicOfficeMCPTests(unittest.TestCase):
         self.assertNotIn("phone_number", route)
         route_es = department_guidance("urgent_postop", language="es")
         self.assertIn("911", route_es["emergency_message"])
+
+    def test_phone_window_exact_boundary_and_friday_clinic(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        pacific = ZoneInfo("America/Los_Angeles")
+        before = staffed_phone_window_guidance(
+            when=datetime(2026, 10, 20, 10, 59, tzinfo=pacific))
+        at_close = staffed_phone_window_guidance(
+            when=datetime(2026, 10, 20, 11, 0, tzinfo=pacific))
+        friday = staffed_phone_window_guidance(
+            when=datetime(2026, 10, 23, 11, 30, tzinfo=pacific))
+        self.assertTrue(before["within_proposed_staffed_window"])
+        self.assertFalse(at_close["within_proposed_staffed_window"])
+        self.assertFalse(friday["within_proposed_staffed_window"])
+        self.assertTrue(friday["friday_in_person_clinic_active"])
+        self.assertFalse(at_close["office_hours_verified"])
+        self.assertFalse(at_close["actual_staff_availability_verified"])
+
+    def test_records_fax_and_referral_guidance_never_claims_submission(self):
+        for category in ("medical_records", "fax", "forms", "refill", "dose_change"):
+            result = request_processing_guidance(category)
+            self.assertEqual(result["routine_processing_target_business_days"], 3)
+            self.assertFalse(result["message_submitted"])
+            self.assertFalse(result["secure_intake_enabled"])
+            self.assertFalse(result["fax_sent"])
+        outgoing = request_processing_guidance("outgoing_referral")
+        self.assertEqual(outgoing["routine_processing_target_business_days"], 2)
+        self.assertFalse(outgoing["message_submission_available_from_this_tool"])
+
+    def test_office_info_contains_shared_location_and_unverified_hours(self):
+        info = office_information()
+        self.assertIn("Flamingo", info["office_address_on_file"])
+        self.assertIn("Forte", info["shared_office_note"])
+        self.assertEqual(info["portal_name"], "YourHealthFile")
+        self.assertFalse(info["office_hours_verified"])
+        self.assertFalse(info["current_staff_availability_verified"])
+        self.assertEqual(office_information("es")["language"], "es")
+
+    def test_integration_status_fails_closed_for_messages_and_transfers(self):
+        status = integration_capabilities()
+        self.assertFalse(status["secure_message_intake_enabled"])
+        self.assertFalse(status["records_release_enabled"])
+        self.assertFalse(status["fax_transmission_enabled"])
+        self.assertFalse(status["actual_retell_transfer_executed"])
 
     def test_no_ehr_patient_or_call_access(self):
         status = integration_capabilities()
@@ -122,6 +168,8 @@ class PublicOfficeMCPTests(unittest.TestCase):
                     "get_appointment_guidance",
                     "get_department_routing",
                     "get_integration_status",
+                    "get_phone_hours_status",
+                    "get_administrative_request_guidance",
                 })
 
     def test_health_check_without_token(self):

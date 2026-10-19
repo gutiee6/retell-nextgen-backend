@@ -1,5 +1,6 @@
 """Read-only Retell MCP server: public office information, never patient data."""
 from contextlib import asynccontextmanager
+from datetime import datetime
 import os
 import secrets
 from typing import Literal
@@ -10,11 +11,12 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Mount, Route
 
 
-BOOKING_URL = (
-    "https://www.yourhealthfile.com/providers/1289988/"
-    "las-vegas-neurological-surgery-doctor.html"
+from office_policy import (
+    BOOKING_URL, PRACTICE, OFFICE_ADDRESS, OFFICE_LOCATION_NOTE,
+    OFFICE_PHONE, OFFICE_EMAIL, PHONE_HOURS, FRIDAY_CLINIC_HOURS,
+    HOURS_APPROVAL_REQUIRED, phone_status,
+    administrative_guidance as policy_administrative_guidance,
 )
-PRACTICE = "Nevada Brain & Spine Care"
 
 mcp = MCPServer(
     "Nevada Brain & Spine public office information",
@@ -28,25 +30,53 @@ mcp = MCPServer(
 
 
 def office_information(language: Literal["en", "es"] = "en") -> dict:
-    """Return public-facing office data, excluding unverified hours and numbers."""
+    """Public directions/contact and provisional hours, not proof of staffing."""
     if language == "es":
-        return {
-            "practice": PRACTICE,
-            "language": "es",
-            "new_patient_booking_url": BOOKING_URL,
-            "message": "Para citas nuevas, consulte el portal de citas. El personal confirma cualquier cambio o cancelación.",
-            "office_hours": "No verificados. Confirme el horario con el personal.",
-            "appointment_status": "No se ha reservado ninguna cita mediante esta herramienta.",
-        }
+        msg = (
+            "Para citas nuevas, utilice YourHealthFile. Los cambios o "
+            "cancelaciones deben ser confirmados por el personal."
+        )
+        hours_notice = (
+            "Horario telefónico propuesto de lunes a viernes, 7 a. m. "
+            "hasta antes de las 11 a. m. (hora del Pacífico); "
+            "requiere confirmación del consultorio."
+        )
+        shared = (
+            "Oficina compartida con la práctica del Dr. Forte; "
+            "este asistente representa a Nevada Brain & Spine Care."
+        )
+    else:
+        msg = (
+            "For new appointments, use the YourHealthFile patient portal. "
+            "Staff must confirm changes or cancellations."
+        )
+        hours_notice = (
+            "Proposed staffed phone window: Monday-Friday 7 AM to before "
+            "11 AM Pacific, pending practice confirmation. Friday in-person "
+            "clinic 7 AM-noon does not extend live phone coverage."
+        )
+        shared = OFFICE_LOCATION_NOTE
     return {
         "practice": PRACTICE,
-        "language": "en",
+        "language": language,
         "new_patient_booking_url": BOOKING_URL,
-        "message": "For new appointments, use the office's YourHealthFile link. Staff must handle changes or cancellations.",
-        "office_hours": "Not verified. Ask staff for current office and phone hours.",
-        "appointment_status": "No appointment has been booked by this tool.",
+        "portal_name": "YourHealthFile",
+        "message": msg,
+        "office_address_on_file": OFFICE_ADDRESS,
+        "shared_office_note": shared,
+        "office_phone_on_file": OFFICE_PHONE,
+        "office_email_on_file": OFFICE_EMAIL,
+        "phone_hours": PHONE_HOURS,
+        "friday_in_person_clinic_hours": FRIDAY_CLINIC_HOURS,
+        "hours_notice": hours_notice,
+        "office_hours_verified": not HOURS_APPROVAL_REQUIRED,
+        "current_staff_availability_verified": False,
+        "appointment_status": (
+            "No se ha reservado ninguna cita mediante esta herramienta."
+            if language == "es"
+            else "No appointment has been booked by this tool."
+        ),
     }
-
 
 def appointment_guidance(
     request_type: Literal["new", "availability", "reschedule", "cancel"],
@@ -71,6 +101,7 @@ def appointment_guidance(
         "request_type": request_type,
         "language": language,
         "instructions": messages[request_type],
+        "portal_name": "YourHealthFile",
         "new_patient_booking_url": BOOKING_URL,
         "live_availability_checked": False,
         "appointment_booked": False,
@@ -136,9 +167,68 @@ def integration_capabilities() -> dict:
         "appointment_changes_enabled": False,
         "patient_data_access": False,
         "call_analytics_connected": False,
+        "secure_message_intake_enabled": False,
+        "records_release_enabled": False,
+        "fax_transmission_enabled": False,
+        "actual_retell_transfer_executed": False,
         "notes": "No EHR, patient, call transcript, SMS or scheduling access is implemented.",
     }
 
+
+def staffed_phone_window_guidance(
+    language: Literal["en", "es"] = "en",
+    when: datetime | None = None,
+) -> dict:
+    """Local Pacific schedule calculation, not verification of real staffing."""
+    status = phone_status(when)
+    window = status["live_phone_staff_available"]
+    if language == "es":
+        guidance = (
+            "Según el horario telefónico propuesto, no hay atención telefónica "
+            "en vivo ahora. Puede utilizar un canal de contacto autorizado."
+            if not window else
+            "Según el horario propuesto, se encuentra dentro de las horas "
+            "telefónicas. La disponibilidad real del personal no está verificada."
+        )
+    else:
+        guidance = (
+            "You are calling outside the proposed staffed phone hours. "
+            "Live phone staff are not scheduled under this policy; "
+            "use an approved contact or message channel."
+            if not window else
+            "This is within the proposed staffed phone window; actual live "
+            "staff availability is not verified."
+        )
+    return {
+        "language": language,
+        "timezone": status["timezone"],
+        "local_time": status["local_time"],
+        "phone_hours": PHONE_HOURS,
+        "friday_in_person_clinic_hours": FRIDAY_CLINIC_HOURS,
+        "within_proposed_staffed_window": window,
+        "friday_in_person_clinic_active": status["friday_in_person_clinic_active"],
+        "office_hours_verified": not HOURS_APPROVAL_REQUIRED,
+        "actual_staff_availability_verified": False,
+        "spoken_guidance": guidance,
+        "message_submitted": False,
+    }
+
+
+def request_processing_guidance(
+    request_type: Literal[
+        "medical_records", "fax", "referral", "outgoing_referral",
+        "forms", "billing", "refill", "dose_change", "other",
+    ],
+    language: Literal["en", "es"] = "en",
+) -> dict:
+    """No caller data accepted; no records, faxes or messages are transmitted."""
+    result = policy_administrative_guidance(request_type, language)
+    return {
+        **result,
+        "office_contact_on_file": OFFICE_PHONE,
+        "message_submission_available_from_this_tool": False,
+        "callers_must_use_approved_secure_intake": True,
+    }
 
 @mcp.tool()
 def get_office_information(language: Literal["en", "es"] = "en") -> dict:
@@ -171,6 +261,23 @@ def get_department_routing(
     """Return a routing category; urgent post-op callers still need a Retell transfer."""
     return department_guidance(department, language)
 
+
+@mcp.tool()
+def get_phone_hours_status(language: Literal["en", "es"] = "en") -> dict:
+    """Get current Pacific-time proposed phone window, not confirmed staff presence."""
+    return staffed_phone_window_guidance(language)
+
+
+@mcp.tool()
+def get_administrative_request_guidance(
+    request_type: Literal[
+        "medical_records", "fax", "referral", "outgoing_referral",
+        "forms", "billing", "refill", "dose_change", "other",
+    ],
+    language: Literal["en", "es"] = "en",
+) -> dict:
+    """Get records/fax/referral/refill processing targets, without taking requests."""
+    return request_processing_guidance(request_type, language)
 
 @mcp.tool()
 def get_integration_status() -> dict:
