@@ -64,7 +64,16 @@ async def _public_args(request: Request, allowed: set[str]) -> dict:
         payload = json.loads(raw)
     except (ValueError, UnicodeDecodeError):
         raise HTTPException(status_code=422, detail="Invalid JSON") from None
-    if not isinstance(payload, dict) or not set(payload).issubset(allowed):
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="Unexpected function arguments")
+    # Retell may send parameters under "args" unless "Payload: Args Only" is enabled.
+    if "args" in payload:
+        if not set(payload).issubset({"args", "name"}) or not isinstance(payload["args"], dict):
+            raise HTTPException(status_code=422, detail="Unexpected function envelope")
+        if "name" in payload and (not isinstance(payload["name"], str) or len(payload["name"]) > 64):
+            raise HTTPException(status_code=422, detail="Invalid function name")
+        payload = payload["args"]
+    if not set(payload).issubset(allowed):
         raise HTTPException(status_code=422, detail="Unexpected function arguments")
     if any(not isinstance(value, str) or len(value) > 40 for value in payload.values()):
         raise HTTPException(status_code=422, detail="Invalid argument value")
