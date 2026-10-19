@@ -8,7 +8,8 @@ from fastapi.responses import Response
 from retell import Retell
 
 from office_policy import (
-    PRACTICE, appointment_guidance, administrative_guidance, phone_status,
+    PRACTICE, OFFICE_ADDRESS, OFFICE_LOCATION_NOTE, OFFICE_PHONE, OFFICE_EMAIL,
+    appointment_guidance, administrative_guidance, phone_status,
 )
 
 app = FastAPI(title="Retell office assistant backend", docs_url=None, redoc_url=None)
@@ -87,6 +88,10 @@ async def office_routing(request: Request):
     current = phone_status()
     return {
         "practice": PRACTICE,
+        "office_address": OFFICE_ADDRESS,
+        "shared_office_note": OFFICE_LOCATION_NOTE,
+        "office_phone": OFFICE_PHONE,
+        "office_email": OFFICE_EMAIL,
         "office_hours": current["phone_hours"],
         "phone_status": current,
         "departments": [
