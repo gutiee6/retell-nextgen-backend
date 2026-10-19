@@ -159,6 +159,27 @@ class RetellBackendTests(unittest.TestCase):
         for destination in result.json()["departments"]:
             self.assertFalse(destination["transfer_performed"])
 
+    def test_confirmed_practice_address_and_contact(self):
+        result = self.post("/retell/functions/office-routing")
+        self.assertEqual(result.status_code, 200)
+        data = result.json()
+        self.assertIn("9488 West Flamingo Road", data["office_address"])
+        self.assertIn("Suite 100", data["office_address"])
+        self.assertIn("Dr. Forte", data["shared_office_note"])
+        self.assertEqual(data["office_phone"], "702-763-7384")
+        self.assertEqual(data["office_email"], "office@nevadabrainandspine.com")
+
+    def test_outgoing_referrals_have_two_day_target(self):
+        result = administrative_guidance("outgoing_referral")
+        self.assertEqual(result["routine_processing_target_business_days"], 2)
+        self.assertFalse(result["message_submitted"])
+
+    def test_short_link_not_assumed_verified(self):
+        result = appointment_guidance("new")
+        self.assertEqual(result["portal_name"], "YourHealthFile")
+        self.assertEqual(result["practice_short_link"], "https://tinyurl.com/Dr-Nagy")
+        self.assertFalse(result["short_link_redirect_verified"])
+
     def test_spanish_guidance(self):
         self.assertEqual(appointment_guidance("new", "es")["language"], "es")
         self.assertIn("tres días", administrative_guidance("fax", "es")["processing_notice"])
