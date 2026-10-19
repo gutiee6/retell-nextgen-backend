@@ -3,6 +3,11 @@ from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 PRACTICE = "Nevada Brain & Spine Care"
+OFFICE_ADDRESS = "9488 West Flamingo Road, Suite 100, Las Vegas, NV 89147"
+OFFICE_LOCATION_NOTE = "Shared with Dr. Forte's family practice; this receptionist represents Nevada Brain & Spine Care only."
+OFFICE_PHONE = "702-763-7384"
+OFFICE_EMAIL = "office@nevadabrainandspine.com"
+SHORT_BOOKING_URL = "https://tinyurl.com/Dr-Nagy"  # Office-provided; redirect not independently verified.
 TIMEZONE = "America/Los_Angeles"
 BOOKING_URL = (
     "https://www.yourhealthfile.com/providers/1289988/"
@@ -15,7 +20,7 @@ HOURS_APPROVAL_REQUIRED = True
 
 REQUEST_TYPES = {
     "medical_records", "fax", "referral", "forms", "billing",
-    "refill", "dose_change", "other",
+    "refill", "dose_change", "outgoing_referral", "other",
 }
 APPOINTMENT_TYPES = {"new", "availability", "reschedule", "cancel"}
 
@@ -83,6 +88,8 @@ def appointment_guidance(request_type: str = "new", language: str = "en") -> dic
         "language": language,
         "portal_name": "YourHealthFile",
         "new_patient_booking_url": BOOKING_URL,
+        "practice_short_link": SHORT_BOOKING_URL,
+        "short_link_redirect_verified": False,
         "instructions": instructions[language][request_type],
         "live_availability_checked": False,
         "appointment_booked": False,
@@ -98,20 +105,25 @@ def administrative_guidance(request_type: str, language: str = "en") -> dict:
         raise ValueError("Unknown administrative request type")
     if language not in {"en", "es"}:
         raise ValueError("Unsupported language")
-    text = (
-        "Permita hasta tres días hábiles para procesar solicitudes administrativas "
-        "rutinarias. Algunos documentos requieren verificación o autorización. "
-        "Las solicitudes urgentes deben escalarse al personal."
-        if language == "es" else
-        "Please allow up to three business days for routine administrative "
-        "processing. Medical records or faxes may require verification or "
-        "authorization. Escalate urgent requests to staff."
-    )
+    days = 2 if request_type == "outgoing_referral" else 3
+    if language == "es":
+        days_words = "dos" if days == 2 else "tres"
+        text = (
+            f"Permita hasta {days_words} días hábiles para el trámite rutinario. "
+            "Algunos documentos requieren verificación o autorización. "
+            "Las solicitudes urgentes deben revisarse por el personal."
+        )
+    else:
+        text = (
+            f"Please allow up to {days} business days for routine administrative processing. "
+            "Medical records or faxes may require verification or authorization. "
+            "Escalate urgent requests to staff. This is a target, not a guaranteed release deadline."
+        )
     return {
         "success": True,
         "request_type": request_type,
         "language": language,
-        "routine_processing_target_business_days": 3,
+        "routine_processing_target_business_days": days,
         "processing_notice": text,
         "secure_intake_enabled": False,
         "message_submitted": False,
