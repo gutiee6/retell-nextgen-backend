@@ -21,7 +21,7 @@ All `/retell/functions/*` endpoints require `Authorization: Bearer <FUNCTION_BEA
 
 - `office_routing` → POST `https://YOUR-HOST/retell/functions/office-routing`, empty JSON `{}`.
 - `appointment_info` → POST `https://YOUR-HOST/retell/functions/appointment-info`. Optional JSON: `{"request_type":"new"}`. Allowed types: `new`, `availability`, `reschedule`, `cancel`.
-- In Retell custom functions, enable **Payload: Args Only** for a flat JSON body. The backend also supports the standard `{ "name": "...", "args": { ... } }` envelope, but never accepts additional caller metadata or PHI.
+- In Retell custom functions, **turn on Payload: Args Only** so Retell sends only function arguments. The default full payload contains a `call` object with transcripts, which this public-information backend intentionally rejects. Do not send caller metadata or PHI.
 - `request_guidance` → POST `https://YOUR-HOST/retell/functions/request-guidance`. Example `{"request_type":"medical_records"}`. Other categories: `fax`, `referral`, `outgoing_referral`, `forms`, `billing`, `refill`, `dose_change`, `other`. Routine outgoing referrals have a separate two-business-day target; routine records, faxes, and forms have a three-business-day target.
 - Avoid adding `submit-message` to a live agent until a real compliant intake destination is configured and approved.
 - For the already-existing MCP `get_appointment_guidance` tool, the fixed YourHealthFile URL is also available; **select and connect the correct tool in Retell**. See `mcp/README.md`.
