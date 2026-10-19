@@ -9,6 +9,7 @@ COPY mcp/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY mcp/office_mcp.py ./office_mcp.py
+COPY office_policy.py ./office_policy.py
 RUN useradd --create-home --uid 10001 appuser
 USER appuser
 
