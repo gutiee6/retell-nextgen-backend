@@ -1,37 +1,53 @@
-# Nevada Brain & Spine Care — Retell AI backend (starter)
+# Nevada Brain & Spine Care — Retell AI backend
 
-**Status: code scaffold only; not deployed, not connected to Retell or NextGen; not approved for patient calls.**
+**Status: review/staging scaffold only. Not automatically connected to Retell, Render, NextGen or live patient message intake. Not approved for patient calls.**
 
-## Implemented
-- `GET /health` status endpoint.
-- `POST /retell/webhook` rejects unsigned requests and uses the official Retell SDK verifier. Valid webhook events return 204; no transcript, phone number, recording, call payload, or patient data is logged, saved or sent elsewhere.
-- `POST /retell/functions/office-routing` requires a separate Bearer token; returns static, generic routing metadata only.
-- No scheduling, text replies, NextGen writes, recording, or clinical triage.
+This branch improves the October 19 Retell evaluation's **public-information behavior** without collecting or transmitting patient data. The Python endpoints are stateless, require a separate function bearer token and do not deliver messages or connect calls.
 
-## Running locally with **synthetic test calls only**
+## Public endpoints and capabilities
+
+| Endpoint | Result | Does it perform the action? |
+| --- | --- | --- |
+| GET `/health` | Returns service status | Health check only |
+| POST `/retell/webhook` | Verifies Retell signature, discards event | No storage or call actions |
+| POST `/retell/functions/office-routing` | Phone-hours boundary and routing labels | No call transfer |
+| POST `/retell/functions/appointment-info` | Canonical YourHealthFile link and type-specific fallback | No live availability/booking |
+| POST `/retell/functions/request-guidance` | Routine 3-business-day policy for an administrative category | No patient intake or fax |
+| POST `/retell/functions/submit-message` | `success: false`, `message_submitted: false` | **Disabled** until approved secure intake exists |
+
+All `/retell/functions/*` endpoints require `Authorization: Bearer <FUNCTION_BEARER_TOKEN>`. Public-info endpoints reject any unexpected arguments rather than accepting patient details. The `submit-message` endpoint intentionally fails closed. Do not use these endpoints for names, phone numbers, dates of birth, prescriptions, symptoms, records or PHI.
+
+### Retell custom function setup (manual)
+
+- `office_routing` → POST `https://YOUR-HOST/retell/functions/office-routing`, empty JSON `{}`.
+- `appointment_info` → POST `https://YOUR-HOST/retell/functions/appointment-info`. Optional JSON: `{"request_type":"new"}`. Allowed types: `new`, `availability`, `reschedule`, `cancel`.
+- In Retell custom functions, **turn on Payload: Args Only** so Retell sends only function arguments. The default full payload contains a `call` object with transcripts, which this public-information backend intentionally rejects. Do not send caller metadata or PHI.
+- `request_guidance` → POST `https://YOUR-HOST/retell/functions/request-guidance`. Example `{"request_type":"medical_records"}`. Other categories: `fax`, `referral`, `outgoing_referral`, `forms`, `billing`, `refill`, `dose_change`, `other`. Routine outgoing referrals have a separate two-business-day target; routine records, faxes, and forms have a three-business-day target.
+- Avoid adding `submit-message` to a live agent until a real compliant intake destination is configured and approved.
+- For the already-existing MCP `get_appointment_guidance` tool, the fixed YourHealthFile URL is also available; **select and connect the correct tool in Retell**. See `mcp/README.md`.
+- **Actual** `transfer_urgent_postop` must be configured as a Retell transfer node/action with verified destination; this code cannot perform a phone transfer.
+- Paste and review `agent-instructions.md` inside the Retell agent. GitHub edits do not update the agent prompt on their own.
+
+The user's October 19 evaluation proposes live phone staffing **Monday-Friday 7:00 AM up to but excluding 11:00 AM Pacific** and a separate **Friday 7:00 AM-noon in-person clinic**. `office_policy.py` implements that boundary, including DST, for automated tests. **These hours still require explicit practice approval before live use.** The existing practice-provided Retell reference identifies **9488 West Flamingo Road, Suite 100, Las Vegas, NV 89147**, shared with Dr. Forte's family practice. Staff should confirm continued accuracy before publishing.
+
+The new-patient URL recorded in the existing MCP documentation is (the office-provided short link `https://tinyurl.com/Dr-Nagy` has not been independently redirect-verified):
+
+https://www.yourhealthfile.com/providers/1289988/las-vegas-neurological-surgery-doctor.html
+
+## Testing
 ```bash
-python -m venv .venv
 pip install -r requirements.txt
-# Set RETELL_API_KEY and FUNCTION_BEARER_TOKEN in local environment (never commit them)
-uvicorn app:app --host 127.0.0.1 --port 8000
+python -m unittest discover -s tests -v
 ```
 
-## Connect in Retell AI (after approval)
-1. Verify vendor-specific HIPAA agreements for Retell, telecom provider, speech and hosting services. Review recording/transcript storage and retention before patient calls.
-2. Deploy this application to an approved HTTPS hosting service; store secrets in the host's secret manager, not GitHub source. This GitHub repository is currently **public**; change to private before adding anything sensitive (never commit PHI even privately).
-3. Add a Retell webhook pointing to `https://YOUR-HOST/retell/webhook`; set `RETELL_API_KEY` to the key approved for webhook verification. Do not enter any API key in a chat or code commit.
-4. Create a Retell **Conversation Flow** agent with office info, surgery scheduling, records/referrals, TMS, appointments and staff transfer branches. Set transfers inside Retell to verified approved staff destinations. Test failed-transfer, no-input, Spanish, and after-hours cases using synthetic calls.
-5. Optional: configure a Retell custom function `POST https://YOUR-HOST/retell/functions/office-routing` with an `Authorization: Bearer <FUNCTION_BEARER_TOKEN>` header. **This endpoint only supplies static routing information; it cannot actually transfer calls.** Transfers require Retell transfer nodes.
-6. Add approved office hours, after-hours coverage and escalation policies in the agent knowledge base. Do not publish unverified hours or imply 24/7 live physician availability.
-7. Do not connect NextGen EHR without written practice authorization, vendor approval, scoped OAuth, audit logging and HIPAA review. **No NextGen integration is implemented here.**
+Tests use only synthetic input and mocked Retell signature verification. GitHub Actions runs the same checks for pull requests.
 
-## GitHub automation
-- GitHub Actions runs offline tests on pushes to `main`, pull requests, and manual runs.
-- Tests use synthetic payloads and mock Retell verification; they do not call Twilio or Retell and do not contain patient data.
-- Run locally with `python -m unittest discover -s tests -v`.
+## Security and deployment gates
 
-## Safety requirements
-- Never send names, dates of birth, phone numbers, patient-specific requests, transcripts or recordings to GitHub Issues or Actions.
-- Do not promise callbacks, clinical advice, prescriptions or confirmed appointments when no approved workflow exists.
-- Real patient call data must not flow into this scaffold before risk assessment, BAAs, authentication, access controls, encryption, audit trails, and retention policy are implemented.
-- Existing Google Voice or Twilio routing is **not** changed by this repository.
+1. The repository is **public**. Never commit API keys, access tokens, transcripts, phone numbers, patient identifiers, clinical data or message payloads.
+2. The practice must authorize all vendors, hosting, access controls, BAAs, recording/transcript rules, audit logs, and retention before real calls or PHI are processed.
+3. Store `RETELL_API_KEY` and `FUNCTION_BEARER_TOKEN` in an approved host secret manager, never in the repository.
+4. Deploy to approved HTTPS hosting only after review. Do not attach a real patient phone line to this scaffold.
+5. Separately implement and verify a secure request queue, message delivery acknowledgment, urgent-postop transfer, address, and scheduling/availability if desired. Do not claim any of these exist until verified.
+
+Existing Twilio or Google Voice call forwarding is unchanged.
