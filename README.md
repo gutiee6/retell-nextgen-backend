@@ -22,15 +22,15 @@ All `/retell/functions/*` endpoints require `Authorization: Bearer <FUNCTION_BEA
 - `office_routing` → POST `https://YOUR-HOST/retell/functions/office-routing`, empty JSON `{}`.
 - `appointment_info` → POST `https://YOUR-HOST/retell/functions/appointment-info`. Optional JSON: `{"request_type":"new"}`. Allowed types: `new`, `availability`, `reschedule`, `cancel`.
 - In Retell custom functions, enable **Payload: Args Only** for a flat JSON body. The backend also supports the standard `{ "name": "...", "args": { ... } }` envelope, but never accepts additional caller metadata or PHI.
-- `request_guidance` → POST `https://YOUR-HOST/retell/functions/request-guidance`. Example `{"request_type":"medical_records"}`. Other categories: `fax`, `referral`, `forms`, `billing`, `refill`, `dose_change`, `other`.
+- `request_guidance` → POST `https://YOUR-HOST/retell/functions/request-guidance`. Example `{"request_type":"medical_records"}`. Other categories: `fax`, `referral`, `outgoing_referral`, `forms`, `billing`, `refill`, `dose_change`, `other`. Routine outgoing referrals have a separate two-business-day target; routine records, faxes, and forms have a three-business-day target.
 - Avoid adding `submit-message` to a live agent until a real compliant intake destination is configured and approved.
 - For the already-existing MCP `get_appointment_guidance` tool, the fixed YourHealthFile URL is also available; **select and connect the correct tool in Retell**. See `mcp/README.md`.
 - **Actual** `transfer_urgent_postop` must be configured as a Retell transfer node/action with verified destination; this code cannot perform a phone transfer.
 - Paste and review `agent-instructions.md` inside the Retell agent. GitHub edits do not update the agent prompt on their own.
 
-The user's October 19 evaluation proposes live phone staffing **Monday-Friday 7:00 AM up to but excluding 11:00 AM Pacific** and a separate **Friday 7:00 AM-noon in-person clinic**. `office_policy.py` implements that boundary, including DST, for automated tests. **These hours still require explicit practice approval before live use.** The Dr. Forte shared-office address is not verified, so no address is invented.
+The user's October 19 evaluation proposes live phone staffing **Monday-Friday 7:00 AM up to but excluding 11:00 AM Pacific** and a separate **Friday 7:00 AM-noon in-person clinic**. `office_policy.py` implements that boundary, including DST, for automated tests. **These hours still require explicit practice approval before live use.** The existing practice-provided Retell reference identifies **9488 West Flamingo Road, Suite 100, Las Vegas, NV 89147**, shared with Dr. Forte's family practice. Staff should confirm continued accuracy before publishing.
 
-The approved new-patient URL recorded in the existing MCP documentation is:
+The new-patient URL recorded in the existing MCP documentation is (the office-provided short link `https://tinyurl.com/Dr-Nagy` has not been independently redirect-verified):
 
 https://www.yourhealthfile.com/providers/1289988/las-vegas-neurological-surgery-doctor.html
 
