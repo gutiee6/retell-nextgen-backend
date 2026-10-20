@@ -90,8 +90,10 @@ class RetellBackendTests(unittest.TestCase):
 
     def test_phone_weekends_and_before_open_are_closed(self):
         for sample in (
-            datetime(2026, 10, 24, 8, 30, tzinfo=TZ),
-            datetime(2026, 10, 20, 10, 0, tzinfo=TZ),
+            datetime(2026, 10, 24, 8, 30, tzinfo=TZ),  # Saturday
+            datetime(2026, 10, 21, 9, 59, tzinfo=TZ),  # Wednesday before opening
+            datetime(2026, 10, 22, 9, 59, tzinfo=TZ),  # Thursday before opening
+            datetime(2026, 10, 20, 10, 0, tzinfo=TZ),  # Tuesday
         ):
             self.assertFalse(phone_status(sample)["live_phone_staff_available"])
 
