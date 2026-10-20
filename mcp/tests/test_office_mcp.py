@@ -56,12 +56,15 @@ class PublicOfficeMCPTests(unittest.TestCase):
         from datetime import datetime
         from zoneinfo import ZoneInfo
         pacific = ZoneInfo("America/Los_Angeles")
+        at_open = staffed_phone_window_guidance(
+            when=datetime(2026, 10, 21, 10, 0, tzinfo=pacific))
         before = staffed_phone_window_guidance(
             when=datetime(2026, 10, 22, 13, 59, tzinfo=pacific))
         at_close = staffed_phone_window_guidance(
             when=datetime(2026, 10, 22, 14, 0, tzinfo=pacific))
         friday = staffed_phone_window_guidance(
             when=datetime(2026, 10, 23, 13, 30, tzinfo=pacific))
+        self.assertTrue(at_open["within_live_receptionist_hours"])
         self.assertTrue(before["within_live_receptionist_hours"])
         self.assertFalse(at_close["within_live_receptionist_hours"])
         self.assertFalse(friday["within_live_receptionist_hours"])
