@@ -1,6 +1,6 @@
 # Nevada Brain & Spine Care — Retell receptionist V22 (implementation-ready)
 
-> IMPORTANT: GitHub is NOT the live Retell agent. Paste/review the instructions below in Retell only after confirming the practice information. Message intake involving patient identifiers MUST remain disabled until an authenticated, practice-approved secure `send_office_message` destination, vendor agreements, and privacy controls are active. The public GitHub/Render backend is read-only and MUST NOT receive names, DOBs, phone numbers, symptoms, medication requests, records, or transcripts.
+> IMPORTANT: GitHub is NOT the live Retell agent. Paste/review the instructions below in Retell using the phone, address, and hours provided by the practice on Oct 20, 2026. Message intake involving patient identifiers MUST remain disabled until an authenticated, practice-approved secure `send_office_message` destination, vendor agreements, and privacy controls are active. The public GitHub/Render backend is read-only and MUST NOT receive names, DOBs, phone numbers, symptoms, medication requests, records, or transcripts.
 >
 > **Deployment gate:** `secure_message_intake_approved` is FALSE by default. It can be marked TRUE in the actual Retell deployment only by an authorized practice administrator after verifying the destination and Retell function. A mock tool in an E2E test does not make live intake approved. While FALSE, give contact alternatives without gathering patient details. Do not promise to send a message.
 
