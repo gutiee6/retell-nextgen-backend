@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 PRACTICE = "Nevada Brain & Spine Care"
 OFFICE_ADDRESS = "9488 West Flamingo Road, Suite 100, Las Vegas, NV 89147"
 OFFICE_LOCATION_NOTE = "Shared with Dr. Forte's family practice; this receptionist represents Nevada Brain & Spine Care only."
-OFFICE_PHONE = "702-763-7384"
+OFFICE_PHONE = "702-761-3742"
 OFFICE_EMAIL = "office@nevadabrainandspine.com"
 SHORT_BOOKING_URL = "https://tinyurl.com/Dr-Nagy"  # Office-provided; redirect not independently verified.
 TIMEZONE = "America/Los_Angeles"
@@ -13,10 +13,10 @@ BOOKING_URL = (
     "https://www.yourhealthfile.com/providers/1289988/"
     "las-vegas-neurological-surgery-doctor.html"
 )
-PHONE_HOURS = "Monday-Friday, 7:00 AM-11:00 AM Pacific"
-FRIDAY_CLINIC_HOURS = "Friday, 7:00 AM-12:00 PM Pacific (in person, not phone coverage)"
-# Hours are based on the supplied Oct 19 evaluation. Confirm before using in production.
-HOURS_APPROVAL_REQUIRED = True
+PHONE_HOURS = "Wednesday-Thursday, 10:00 AM-2:00 PM Pacific"
+FRIDAY_CLINIC_HOURS = "Friday, 10:00 AM-2:00 PM Pacific (in person, not phone coverage)"
+# Schedule provided by the practice on Oct 20, 2026.
+HOURS_APPROVAL_REQUIRED = False
 
 REQUEST_TYPES = {
     "medical_records", "fax", "referral", "forms", "billing",
@@ -26,7 +26,7 @@ APPOINTMENT_TYPES = {"new", "availability", "reschedule", "cancel"}
 
 
 def phone_status(when: datetime | None = None) -> dict:
-    """Determine staffed phone coverage; 11:00 AM is CLOSED, not open."""
+    """Determine live receptionist coverage; 2:00 PM is CLOSED, not open."""
     if when is None:
         local = datetime.now(ZoneInfo(TIMEZONE))
     else:
@@ -36,8 +36,8 @@ def phone_status(when: datetime | None = None) -> dict:
 
     weekday = local.weekday()
     clock = local.time().replace(tzinfo=None)
-    staffed = weekday < 5 and time(7, 0) <= clock < time(11, 0)
-    friday_clinic = weekday == 4 and time(7, 0) <= clock < time(12, 0)
+    staffed = weekday in {2, 3} and time(10, 0) <= clock < time(14, 0)
+    friday_clinic = weekday == 4 and time(10, 0) <= clock < time(14, 0)
     return {
         "timezone": TIMEZONE,
         "local_time": local.isoformat(timespec="seconds"),
@@ -45,7 +45,7 @@ def phone_status(when: datetime | None = None) -> dict:
         "friday_in_person_clinic_hours": FRIDAY_CLINIC_HOURS,
         "live_phone_staff_available": staffed,
         "friday_in_person_clinic_active": friday_clinic,
-        "phone_closing_boundary": "11:00 AM Pacific is outside live phone hours",
+        "phone_closing_boundary": "2:00 PM Pacific is outside live phone hours",
         "after_hours_message": (
             "Live phone staff are unavailable right now. "
             "I can explain the approved way to leave a message."

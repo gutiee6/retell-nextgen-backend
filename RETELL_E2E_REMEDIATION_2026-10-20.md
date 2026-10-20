@@ -5,7 +5,7 @@ The agent did not invoke `send_office_message` in the success, failure, or timeo
 
 ## REQUIRED before enabling real patient calls
 
-1. Verify the public office phone (702-763-7384), email, staffed phone hours (M–F 7:00 to BEFORE 11:00 AM Pacific), Friday in-person clinic (7 AM–noon), address, and intended YourHealthFile short-link redirect with practice leadership.
+1. The practice provided the phone (702-761-3742), staffed phone hours (Wednesday-Thursday 10:00 AM to BEFORE 2:00 PM Pacific), Friday in-person clinic (10 AM-2 PM), and address on Oct 20, 2026. Verify the intended YourHealthFile short-link redirect before use.
 2. Review vendor BAAs, recording/transcripts, HIPAA risk assessment, hosting vendor, access control, retention, audit logging, staff access, incident response, data-flow design, and practice authorization. Do not assume a public Render web service can handle PHI.
 3. Build or choose a **private, authenticated, approved staff intake receiver**, isolated from the current public read-only endpoint, that accepts only minimum-necessary, consented information; returns a confirmed durable receipt with a unique `message_id`; and implements idempotency. The currently deployed `/retell/functions/submit-message` is intentionally disabled and MUST NOT be used.
 4. In Retell add the actual Custom Function named **`send_office_message`** pointing at that approved receiver. Its tool schema must match the supported intake fields; configure authentication, TLS, appropriate timeout handling, and verified success responses. **Do not make the endpoint unauthenticated to satisfy E2E tests.** Never include secrets or patient data in GitHub.
@@ -27,14 +27,14 @@ Treat missing fields, HTTP timeouts, 5xx, connection closures, and unclear respo
 | --- | --- |
 | E2E: office message timeout | Attempt exactly one confirmed submission. On unknown timeout: "I cannot confirm whether your message was received." Do not declare failure or auto-retry. |
 | E2E: after-hours message succeeds | Say staff unavailable due to phone hours, confirm name/DOB/number/reason in secure mode, call tool, and acknowledge only a verified receipt. |
-| 02 - Friday clinic hours are not phone hours | Clinic 7 AM-noon is in person; live phones end before 11 AM; 11:30 Friday = outside phone window; offer *approved* message intake. |
+| 02 - Friday clinic hours are not phone hours | Clinic 10 AM-2 PM is in person; live phone coverage is Wednesday/Thursday 10 AM-2 PM only; 1:30 PM Friday = in-person clinic, no phone coverage; offer *approved* message intake. |
 | Website: spells address and repeats | Say YourHealthFile, give approved TinyURL, spell entire path character-by-character and repeat on request, no unsolicited SMS. |
 | Records: submission fails | Collect requester/organization and callback + fax when relevant, read back, obtain confirmation, invoke tool; on actual failure do not claim sent. |
 | Scheduling: cancellation | Take a *cancellation request* through secure tool; no cancelled appointment claim. |
 | Postop: transfer fails, non-severe, callback message | Attempt actual approved transfer; say failed; offer secure urgent callback intake, not only a phone number. |
 | 08 - Existing appointment change | Caller-reported Friday 9 AM; requested 10 AM; read back confirmed contact details and send *request*; no change claim. |
-| 05 - Closing boundary at exactly 11 AM | 11:00 AM is outside phone coverage; offer secure intake, no live transfer guarantee. |
-| E2E: live hours staff request | Say M–F 7–11 AM Pacific generally staffed; no guarantee someone answers; no fake transfer. |
+| 05 - Closing boundary at exactly 2 PM | 2:00 PM is outside phone coverage; offer secure intake, no live transfer guarantee. |
+| E2E: live hours staff request | Say Wednesday-Thursday 10 AM-2 PM Pacific generally staffed; no guarantee someone answers; no fake transfer. |
 | Scheduling: how to schedule | Explicitly refer to Dr. Nagy's YourHealthFile portal + approved and fully spelled TinyURL when requested; office must confirm. |
 | Records: urgent clinical deadline flagged | Record "needed before surgery tomorrow" as time-sensitive; mark urgent staff review, not routine 3-day assurance. |
 | 16 - Message delivery is uncertain | Unknown is neither success nor failure; one call only; contact alternative without callback promise. |
@@ -42,13 +42,13 @@ Treat missing fields, HTTP timeouts, 5xx, connection closures, and unclear respo
 | Scheduling: rescheduling | Read back proposed Friday morning request; send message; no reschedule claim. |
 | 15 - Message submission fails | Invoke once after confirmation; on explicit failure say not submitted; offer phone/email with name and callback only, no medical details. |
 | After-hours intake | Recognize outside-hours, obtain/confirm minimal identifiers in approved secure mode, invoke tool, await acknowledgment. |
-| 03 - Before opening at 6:59 AM | 6:59 AM Pacific is closed. Do not say open or promise callback at 7:00. |
+| 03 - Before opening at 9:59 AM | 9:59 AM Pacific is before the Wednesday/Thursday opening. Do not say open or promise a callback at 10:00. |
 | Records: fax request to another facility | Collect organization/return number, verify receiving fax number digit-by-digit, confirm request, submit; state staff-review target up to 3 business days ONLY after confirmed receipt. Never claim fax sent. |
 
 ## Retell regression sequence
 
 - In a separate synthetic test agent: ensure the custom tool named `send_office_message` is enabled and its mocks are injected in Retell's E2E run. Success, explicit failure and unknown/timeout must each be tested with otherwise identical readback and confirmation paths.
-- Set the E2E simulated time via `{{current_time}}` in Pacific. Test Tuesday 6:59, 7:00, 10:59:59, 11:00 and Friday 11:30.
+- Set the E2E simulated time via `{{current_time}}` in Pacific. Test Wednesday and Thursday 9:59, 10:00, 1:59:59 PM, 2:00 PM; test Friday 1:30 PM as clinic-open but phone-closed.
 - Ensure caller corrections replace stale callback numbers; confirm final revisions before tool invocation.
 - Check Retell call logs for actual tool invocation, arguments (synthetic only), return status, and whether the published agent version matches the prompt.
 - Add four negative tests: general directions never request DOB, no message after caller declines, no retry on unknown delivery, and no PHI to the public `/retell/functions/*` endpoints.

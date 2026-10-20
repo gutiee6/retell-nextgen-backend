@@ -56,17 +56,20 @@ class PublicOfficeMCPTests(unittest.TestCase):
         from datetime import datetime
         from zoneinfo import ZoneInfo
         pacific = ZoneInfo("America/Los_Angeles")
+        at_open = staffed_phone_window_guidance(
+            when=datetime(2026, 10, 21, 10, 0, tzinfo=pacific))
         before = staffed_phone_window_guidance(
-            when=datetime(2026, 10, 20, 10, 59, tzinfo=pacific))
+            when=datetime(2026, 10, 22, 13, 59, tzinfo=pacific))
         at_close = staffed_phone_window_guidance(
-            when=datetime(2026, 10, 20, 11, 0, tzinfo=pacific))
+            when=datetime(2026, 10, 22, 14, 0, tzinfo=pacific))
         friday = staffed_phone_window_guidance(
-            when=datetime(2026, 10, 23, 11, 30, tzinfo=pacific))
-        self.assertTrue(before["within_proposed_staffed_window"])
-        self.assertFalse(at_close["within_proposed_staffed_window"])
-        self.assertFalse(friday["within_proposed_staffed_window"])
+            when=datetime(2026, 10, 23, 13, 30, tzinfo=pacific))
+        self.assertTrue(at_open["within_live_receptionist_hours"])
+        self.assertTrue(before["within_live_receptionist_hours"])
+        self.assertFalse(at_close["within_live_receptionist_hours"])
+        self.assertFalse(friday["within_live_receptionist_hours"])
         self.assertTrue(friday["friday_in_person_clinic_active"])
-        self.assertFalse(at_close["office_hours_verified"])
+        self.assertTrue(at_close["office_hours_verified"])
         self.assertFalse(at_close["actual_staff_availability_verified"])
 
     def test_records_fax_and_referral_guidance_never_claims_submission(self):
@@ -80,12 +83,12 @@ class PublicOfficeMCPTests(unittest.TestCase):
         self.assertEqual(outgoing["routine_processing_target_business_days"], 2)
         self.assertFalse(outgoing["message_submission_available_from_this_tool"])
 
-    def test_office_info_contains_shared_location_and_unverified_hours(self):
+    def test_office_info_contains_shared_location_and_practice_hours(self):
         info = office_information()
         self.assertIn("Flamingo", info["office_address_on_file"])
         self.assertIn("Forte", info["shared_office_note"])
         self.assertEqual(info["portal_name"], "YourHealthFile")
-        self.assertFalse(info["office_hours_verified"])
+        self.assertTrue(info["office_hours_verified"])
         self.assertFalse(info["current_staff_availability_verified"])
         self.assertEqual(office_information("es")["language"], "es")
 

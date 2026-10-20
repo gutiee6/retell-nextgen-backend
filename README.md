@@ -28,7 +28,7 @@ All `/retell/functions/*` endpoints require `Authorization: Bearer <FUNCTION_BEA
 - **Actual** `transfer_urgent_postop` must be configured as a Retell transfer node/action with verified destination; this code cannot perform a phone transfer.
 - Paste and review `agent-instructions.md` inside the Retell agent. GitHub edits do not update the agent prompt on their own.
 
-The user's October 19 evaluation proposes live phone staffing **Monday-Friday 7:00 AM up to but excluding 11:00 AM Pacific** and a separate **Friday 7:00 AM-noon in-person clinic**. `office_policy.py` implements that boundary, including DST, for automated tests. **These hours still require explicit practice approval before live use.** The existing practice-provided Retell reference identifies **9488 West Flamingo Road, Suite 100, Las Vegas, NV 89147**, shared with Dr. Forte's family practice. Staff should confirm continued accuracy before publishing.
+Practice-provided schedule (Oct 20, 2026): live receptionist Wednesday and Thursday, 10:00 AM to before 2:00 PM Pacific; Friday in-person clinic, 10:00 AM-2:00 PM, with no live phone coverage. `office_policy.py` implements these windows for automated tests. The confirmed office phone is **702-761-3742** and the address is **9488 West Flamingo Road, Suite 100, Las Vegas, NV 89147**. These GitHub instructions are not the live Retell agent.
 
 The new-patient URL recorded in the existing MCP documentation is (the office-provided short link `https://tinyurl.com/Dr-Nagy` has not been independently redirect-verified):
 

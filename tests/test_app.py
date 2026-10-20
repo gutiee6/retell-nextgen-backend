@@ -73,23 +73,27 @@ class RetellBackendTests(unittest.TestCase):
         self.assertEqual(self.client.post("/retell/functions/request-guidance").status_code, 401)
         self.assertEqual(self.client.post("/retell/functions/submit-message").status_code, 401)
 
-    def test_phone_closed_exactly_11_am_pacific(self):
-        before = phone_status(datetime(2026, 10, 20, 10, 59, 59, tzinfo=TZ))
-        after = phone_status(datetime(2026, 10, 20, 11, 0, tzinfo=TZ))
+    def test_phone_closed_exactly_2_pm_pacific(self):
+        before = phone_status(datetime(2026, 10, 21, 13, 59, 59, tzinfo=TZ))
+        after = phone_status(datetime(2026, 10, 21, 14, 0, tzinfo=TZ))
         self.assertTrue(before["live_phone_staff_available"])
         self.assertFalse(after["live_phone_staff_available"])
         self.assertIn("unavailable", after["after_hours_message"])
+        self.assertTrue(phone_status(datetime(2026, 10, 22, 10, 0, tzinfo=TZ))["live_phone_staff_available"])
+        self.assertFalse(phone_status(datetime(2026, 10, 20, 12, 0, tzinfo=TZ))["live_phone_staff_available"])
 
     def test_friday_clinic_distinct_from_phone_hours(self):
-        result = phone_status(datetime(2026, 10, 23, 11, 30, tzinfo=TZ))
+        result = phone_status(datetime(2026, 10, 23, 13, 0, tzinfo=TZ))
         self.assertTrue(result["friday_in_person_clinic_active"])
         self.assertFalse(result["live_phone_staff_available"])
         self.assertIn("Friday", result["friday_in_person_clinic_hours"])
 
     def test_phone_weekends_and_before_open_are_closed(self):
         for sample in (
-            datetime(2026, 10, 24, 8, 30, tzinfo=TZ),
-            datetime(2026, 10, 19, 6, 59, tzinfo=TZ),
+            datetime(2026, 10, 24, 8, 30, tzinfo=TZ),  # Saturday
+            datetime(2026, 10, 21, 9, 59, tzinfo=TZ),  # Wednesday before opening
+            datetime(2026, 10, 22, 9, 59, tzinfo=TZ),  # Thursday before opening
+            datetime(2026, 10, 20, 10, 0, tzinfo=TZ),  # Tuesday
         ):
             self.assertFalse(phone_status(sample)["live_phone_staff_available"])
 
@@ -161,8 +165,8 @@ class RetellBackendTests(unittest.TestCase):
         result = self.post("/retell/functions/office-routing")
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.json()["practice"], "Nevada Brain & Spine Care")
-        self.assertIn("7:00 AM-11:00 AM", result.json()["office_hours"])
-        self.assertTrue(result.json()["phone_status"]["hours_require_practice_approval"])
+        self.assertIn("Wednesday-Thursday, 10:00 AM-2:00 PM", result.json()["office_hours"])
+        self.assertFalse(result.json()["phone_status"]["hours_require_practice_approval"])
         self.assertIn("Do not triage", result.json()["clinical_policy"])
         for destination in result.json()["departments"]:
             self.assertFalse(destination["transfer_performed"])
@@ -174,7 +178,7 @@ class RetellBackendTests(unittest.TestCase):
         self.assertIn("9488 West Flamingo Road", data["office_address"])
         self.assertIn("Suite 100", data["office_address"])
         self.assertIn("Dr. Forte", data["shared_office_note"])
-        self.assertEqual(data["office_phone"], "702-763-7384")
+        self.assertEqual(data["office_phone"], "702-761-3742")
         self.assertEqual(data["office_email"], "office@nevadabrainandspine.com")
 
     def test_outgoing_referrals_have_two_day_target(self):

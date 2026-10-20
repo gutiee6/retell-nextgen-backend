@@ -12,7 +12,7 @@ Six MCP tools expose only public, non-patient-specific information:
 | `get_appointment_guidance` | Instructions for new, availability, change, and cancel requests; **no actual scheduling** |
 | `get_department_routing` | Names office, surgery, records, TMS, or appointments category; **does not transfer callers** |
 | `get_integration_status` | Truthfully reports lack of EHR, live calendar, call analytics, SMS, and patient data access |
-| `get_phone_hours_status` | Calculates Pacific time against the **proposed** M–F 7–11 AM staff window, separates Friday clinic hours; does not verify actual staff presence |
+| `get_phone_hours_status` | Calculates Pacific time against the practice-provided Wednesday-Thursday 10 AM-2 PM receptionist window and Friday 10 AM-2 PM clinic hours; cannot guarantee an immediate answer |
 | `get_administrative_request_guidance` | Medical records, faxes, forms, refills, referral requests: **3 business days** routinely; **outgoing referrals: 2 business days**; no submission or release |
 
 The approved new-patient link is:
@@ -55,8 +55,8 @@ The existing Render service is **`retell-nextgen-backend`**, hosted at `https://
 - Only read-only public office information; no PHI is needed or retained. The server does not process webhook payloads, transcripts, clinical requests, or patient identifiers.
 - All MCP requests require the separate bearer token; the health endpoint is public. Traffic must use HTTPS in deployment.
 - It does not access NextGen OAuth, send texts, operate phones, schedule/cancel appointments, or access call logs.
-- The policy currently contains **proposed** staffed phone hours, Monday–Friday 7:00 AM until before 11:00 AM Pacific. Exactly 11 AM is outside the window. The physical Friday clinic 7 AM–noon does not extend telephone coverage. Practice approval is still required, and the MCP server cannot independently confirm a staff member is on duty.
-- The office address and shared Dr. Forte location are read from the repository's existing public office policy and require staff verification before public announcement.
+- Practice-provided schedule (Oct 20, 2026): live receptionist Wednesday and Thursday 10:00 AM to before 2:00 PM Pacific; Friday in-person clinic 10:00 AM-2:00 PM, without phone coverage. The MCP server can report whether a time falls within the schedule but cannot guarantee someone will answer immediately.
+- The confirmed office address and phone are read from the repository's public office policy.
 - For emergencies, use the practice-approved emergency language and instruct callers to dial 911; never offer medical triage via MCP.
 - Before any patient-specific integration, complete practice authorization, signed vendor BAAs, HIPAA risk assessment, least-privilege access controls, audit logging, encryption, retention rules, and an explicit approved workflow. **Do not assume Retell, Render, GitHub or this server is HIPAA compliant by default.**
 - The existing repository is **public**. Never commit API credentials, PHI, transcripts, access tokens, real phone numbers, or appointment details.
@@ -64,7 +64,7 @@ The existing Render service is **`retell-nextgen-backend`**, hosted at `https://
 ## Tool setup and failure handling
 
 - In the Retell agent, use `get_appointment_guidance` for scheduling questions and explicitly say **YourHealthFile** even if the tool fails. This tool cannot book or check live availability.
-- Use `get_phone_hours_status` for Pacific-time coverage windows, but **never claim real staff are on duty** from its schedule alone. Confirm official hours with office leadership.
+- Use `get_phone_hours_status` for the practice-provided Pacific-time coverage windows. Do not guarantee an immediate answer or claim a transfer occurred.
 - Use `get_administrative_request_guidance` for routine records, fax, referral, forms, refill, and dose-change policies. **It does not collect or submit patient requests.** No names, DOBs, medications or medical details belong in tool arguments.
 - Urgent postoperative calls still need the real Retell `transfer_urgent_postop` action. `get_department_routing` is *not* a transfer.
 - Never claim a message, record release, fax or prescription was processed without an independently verified response from an approved secure workflow.
