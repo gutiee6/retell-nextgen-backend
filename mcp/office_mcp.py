@@ -205,7 +205,7 @@ def staffed_phone_window_guidance(
         "local_time": status["local_time"],
         "phone_hours": PHONE_HOURS,
         "friday_in_person_clinic_hours": FRIDAY_CLINIC_HOURS,
-        "within_proposed_staffed_window": window,
+        "within_live_receptionist_hours": window,
         "friday_in_person_clinic_active": status["friday_in_person_clinic_active"],
         "office_hours_verified": not HOURS_APPROVAL_REQUIRED,
         "actual_staff_availability_verified": False,
