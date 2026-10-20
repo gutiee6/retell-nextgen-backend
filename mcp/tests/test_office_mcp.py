@@ -83,12 +83,12 @@ class PublicOfficeMCPTests(unittest.TestCase):
         self.assertEqual(outgoing["routine_processing_target_business_days"], 2)
         self.assertFalse(outgoing["message_submission_available_from_this_tool"])
 
-    def test_office_info_contains_shared_location_and_unverified_hours(self):
+    def test_office_info_contains_shared_location_and_practice_hours(self):
         info = office_information()
         self.assertIn("Flamingo", info["office_address_on_file"])
         self.assertIn("Forte", info["shared_office_note"])
         self.assertEqual(info["portal_name"], "YourHealthFile")
-        self.assertFalse(info["office_hours_verified"])
+        self.assertTrue(info["office_hours_verified"])
         self.assertFalse(info["current_staff_availability_verified"])
         self.assertEqual(office_information("es")["language"], "es")
 
