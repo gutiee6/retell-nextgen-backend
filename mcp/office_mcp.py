@@ -30,16 +30,16 @@ mcp = MCPServer(
 
 
 def office_information(language: Literal["en", "es"] = "en") -> dict:
-    """Public directions/contact and provisional hours, not proof of staffing."""
+    """Public directions/contact and practice-provided hours; not proof someone can answer immediately."""
     if language == "es":
         msg = (
             "Para citas nuevas, utilice YourHealthFile. Los cambios o "
             "cancelaciones deben ser confirmados por el personal."
         )
         hours_notice = (
-            "Horario telefónico propuesto de lunes a viernes, 7 a. m. "
-            "hasta antes de las 11 a. m. (hora del Pacífico); "
-            "requiere confirmación del consultorio."
+            "Recepcionista en vivo disponible miércoles y jueves, de 10 a. m. "
+            "a 2 p. m. (hora del Pacífico). Clínica presencial los viernes "
+            "de 10 a. m. a 2 p. m.; no hay cobertura telefónica en vivo."
         )
         shared = (
             "Oficina compartida con la práctica del Dr. Forte; "
@@ -51,9 +51,9 @@ def office_information(language: Literal["en", "es"] = "en") -> dict:
             "Staff must confirm changes or cancellations."
         )
         hours_notice = (
-            "Proposed staffed phone window: Monday-Friday 7 AM to before "
-            "11 AM Pacific, pending practice confirmation. Friday in-person "
-            "clinic 7 AM-noon does not extend live phone coverage."
+            "Live receptionist hours: Wednesday-Thursday, 10 AM-2 PM Pacific. "
+            "Friday in-person clinic: 10 AM-2 PM Pacific; it does not provide "
+            "live phone coverage."
         )
         shared = OFFICE_LOCATION_NOTE
     return {
@@ -179,25 +179,25 @@ def staffed_phone_window_guidance(
     language: Literal["en", "es"] = "en",
     when: datetime | None = None,
 ) -> dict:
-    """Local Pacific schedule calculation, not verification of real staffing."""
+    """Local Pacific schedule calculation; it cannot guarantee an immediate answer."""
     status = phone_status(when)
     window = status["live_phone_staff_available"]
     if language == "es":
         guidance = (
-            "Según el horario telefónico propuesto, no hay atención telefónica "
+            "Según el horario de la recepcionista en vivo, no hay atención telefónica "
             "en vivo ahora. Puede utilizar un canal de contacto autorizado."
             if not window else
-            "Según el horario propuesto, se encuentra dentro de las horas "
-            "telefónicas. La disponibilidad real del personal no está verificada."
+            "Está dentro del horario de la recepcionista en vivo, pero no puedo "
+            "garantizar que alguien responda inmediatamente."
         )
     else:
         guidance = (
-            "You are calling outside the proposed staffed phone hours. "
-            "Live phone staff are not scheduled under this policy; "
-            "use an approved contact or message channel."
+            "You are calling outside live receptionist hours. Live reception "
+            "is available Wednesday and Thursday, 10 AM-2 PM Pacific. "
+            "The Friday clinic is in person only."
             if not window else
-            "This is within the proposed staffed phone window; actual live "
-            "staff availability is not verified."
+            "This is within live receptionist hours, but I cannot guarantee "
+            "someone will answer immediately."
         )
     return {
         "language": language,
@@ -264,7 +264,7 @@ def get_department_routing(
 
 @mcp.tool()
 def get_phone_hours_status(language: Literal["en", "es"] = "en") -> dict:
-    """Get current Pacific-time proposed phone window, not confirmed staff presence."""
+    """Get the practice-provided Pacific-time phone schedule; this cannot guarantee an immediate answer."""
     return staffed_phone_window_guidance(language)
 
 
